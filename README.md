@@ -32,3 +32,5 @@ A practical, Sleeper-integrated toolkit that builds your own season projections,
 ```bash
 pip install pandas numpy requests scipy sv-ttk
 ```
+
+# Running the Project #
