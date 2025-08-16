@@ -25,3 +25,10 @@ A practical, Sleeper-integrated toolkit that builds your own season projections,
 
 ## Mock Draft CLI ##
 - Test the end-to-end flow with Sleeper’s mock draft rooms
+
+# Requirements #
+- Python: 3.9-3.12
+- Packages:
+```bash
+pip install pandas numpy requests scipy sv-ttk
+```
