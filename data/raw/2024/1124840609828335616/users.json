@@ -1,0 +1,109 @@
+[
+  {
+    "avatar": "ad737dbd71d3bc4b151465a1c5806ae2",
+    "display_name": "mehulk04",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1124840609828335616",
+    "metadata": {
+      "allow_pn": "on",
+      "mention_pn": "on",
+      "team_name": "Bijan Mustard"
+    },
+    "settings": null,
+    "user_id": "562432915037523968"
+  },
+  {
+    "avatar": "1386ac87efc51ad3b020ead102c9a4a9",
+    "display_name": "GortiRohan",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1124840609828335616",
+    "metadata": {
+      "allow_pn": "on",
+      "allow_sms": "on",
+      "avatar": "https://sleepercdn.com/uploads/a361e1a688a24edc0d5c6b38f383ff9a.jpg",
+      "mention_pn": "on",
+      "team_name": "2022 Harker Eagles"
+    },
+    "settings": null,
+    "user_id": "808950455362256896"
+  },
+  {
+    "avatar": "845b6b3fe6eb2b912ba627e8defa42da",
+    "display_name": "Schmiedz",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1124840609828335616",
+    "metadata": {
+      "allow_pn": "on",
+      "avatar": "https://sleepercdn.com/uploads/88024758f0e6dbabe64d61cce3ae2986.jpg",
+      "mention_pn": "on",
+      "team_name": "Stroud 9"
+    },
+    "settings": null,
+    "user_id": "974106566116847616"
+  },
+  {
+    "avatar": "bcd942a182c74596d9098255cecad26d",
+    "display_name": "JakeBickettIII",
+    "is_bot": false,
+    "is_owner": true,
+    "league_id": "1124840609828335616",
+    "metadata": {
+      "allow_pn": "on",
+      "avatar": "https://sleepercdn.com/uploads/45b190fd18e399ea841ed5830e8e01d4.jpg",
+      "mention_pn": "on",
+      "team_name": "Gibbs’ Free Energy "
+    },
+    "settings": null,
+    "user_id": "990112455994994688"
+  },
+  {
+    "avatar": "8eb8f8bf999945d523f2c4033f70473e",
+    "display_name": "adarshpayyakkil",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1124840609828335616",
+    "metadata": {
+      "allow_pn": "on",
+      "allow_sms": "on",
+      "avatar": "https://sleepercdn.com/uploads/3e9bad4f110d39db80dba1d1477410a7.jpg",
+      "mention_pn": "on",
+      "team_name": "Drake Maye Lover🥰"
+    },
+    "settings": null,
+    "user_id": "999433102126546944"
+  },
+  {
+    "avatar": "63d0c4e4c2c7db8a421a182f15dc759e",
+    "display_name": "Jakgriff21",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1124840609828335616",
+    "metadata": {
+      "allow_pn": "on",
+      "allow_sms": "on",
+      "avatar": "https://sleepercdn.com/uploads/edb65203568eb72cb69b5fe90deff969",
+      "mention_pn": "on",
+      "team_name": "CeeDeez Balls"
+    },
+    "settings": null,
+    "user_id": "999440800352219136"
+  },
+  {
+    "avatar": "f0edbf4278f53f9425db175073df6584",
+    "display_name": "DiddyMuncher",
+    "is_bot": false,
+    "is_owner": null,
+    "league_id": "1124840609828335616",
+    "metadata": {
+      "allow_pn": "on",
+      "avatar": "https://sleepercdn.com/uploads/84d45170226e51ba43aa305609b93f11.jpg",
+      "mention_pn": "on",
+      "team_name": "Hatin Ahh Hoes "
+    },
+    "settings": null,
+    "user_id": "1128031061746831360"
+  }
+]

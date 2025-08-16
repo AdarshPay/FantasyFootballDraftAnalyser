@@ -1,0 +1,56 @@
+[
+  {
+    "created": 1722545409212,
+    "creators": [
+      "990112455994994688"
+    ],
+    "draft_id": "1124840609828335617",
+    "draft_order": {
+      "1128031061746831360": 2,
+      "562432915037523968": 4,
+      "808950455362256896": 3,
+      "974106566116847616": 7,
+      "990112455994994688": 8,
+      "999433102126546944": 6,
+      "999440800352219136": 1
+    },
+    "last_message_id": "1133632711043665920",
+    "last_message_time": 1724641609491,
+    "last_picked": 1724641609110,
+    "league_id": "1124840609828335616",
+    "metadata": {
+      "description": "",
+      "name": "The Next 47 Redraft 2024",
+      "scoring_type": "ppr"
+    },
+    "season": "2024",
+    "season_type": "regular",
+    "settings": {
+      "alpha_sort": 0,
+      "autopause_enabled": 0,
+      "autopause_end_time": 900,
+      "autopause_start_time": 180,
+      "autostart": 0,
+      "cpu_autopick": 1,
+      "enforce_position_limits": 1,
+      "nomination_timer": 60,
+      "pick_timer": 60,
+      "player_type": 0,
+      "reversal_round": 0,
+      "rounds": 14,
+      "slots_bn": 5,
+      "slots_def": 1,
+      "slots_flex": 1,
+      "slots_k": 1,
+      "slots_qb": 1,
+      "slots_rb": 2,
+      "slots_te": 1,
+      "slots_wr": 2,
+      "teams": 8
+    },
+    "sport": "nfl",
+    "start_time": 1724638620194,
+    "status": "complete",
+    "type": "snake"
+  }
+]
