@@ -273,6 +273,157 @@ def compute_vorp(sim_df: pd.DataFrame, lineup: List[str], teams: int) -> pd.Data
     vorp_df = pd.DataFrame(vorp_vals, columns=["player_id", "vorp"])
     return sim_df.merge(vorp_df, on="player_id", how="left")
 
+def _parse_week_spec(spec: str) -> list[int]:
+    spec = spec.strip()
+    if "-" in spec:
+        a, b = spec.split("-", 1)
+        return list(range(int(a), int(b) + 1))
+    return [int(x) for x in spec.split(",") if x.strip()]
+
+def _score_from_stats(stats: dict, scoring: dict) -> float:
+    """
+    Compute fantasy points from a Sleeper stats dict using your league's scoring settings.
+    Only a subset is used (add more if you want). Unknown keys default to 0.
+    """
+    # common Sleeper stat keys (float-able). Extend as needed.
+    s = lambda k: float(stats.get(k, 0) or 0)
+    sc = lambda k: float(scoring.get(k, 0) or 0)
+
+    pts = 0.0
+    # Passing
+    pts += s("pass_yd") * sc("pass_yd")          # e.g. 0.04 per yard
+    pts += s("pass_td") * sc("pass_td")          # e.g. 4/6
+    pts += s("pass_int") * sc("pass_int")        # usually negative
+    # Rushing
+    pts += s("rush_yd") * sc("rush_yd")
+    pts += s("rush_td") * sc("rush_td")
+    # Receiving
+    pts += s("rec")     * sc("rec")              # PPR/half/none
+    pts += s("rec_yd")  * sc("rec_yd")
+    pts += s("rec_td")  * sc("rec_td")
+    # Fumbles
+    pts += s("fum")     * sc("fum")
+    pts += s("fum_lost")* sc("fum_lost")
+    # Kicker (very rough: if Sleeper provides explicit kick points they may already roll up)
+    pts += s("fgm")     * sc("fgm")
+    pts += s("xpm")     * sc("xpm")
+    # DST/DEF (you can enrich this with sacks/ints/pa, etc. as your scoring defines them)
+    pts += s("def_td")  * sc("def_td")
+    pts += s("sack")    * sc("sack")
+    pts += s("int")     * sc("int")              # team INTs on defense
+
+    return pts
+
+def fetch_sleeper_projections(season: int, weeks: list[int], scoring_settings: dict,
+                              timeout: float = 7.0, sleep_sec: float = 0.3) -> pd.DataFrame:
+    """
+    Returns DataFrame with columns: ['player_id','proj_total'].
+    Handles Sleeper returning either a list[dict] or dict[player_id]->dict per week.
+    Tries several fantasy-points fields before computing from raw stats.
+    """
+    def extract_points(obj: dict) -> float:
+        # top-level point fields we’ve seen in the wild
+        for k in ("pts_ppr", "pts_half_ppr", "pts_std", "fantasy_points", "fp"):
+            if k in obj and obj[k] is not None:
+                try:
+                    return float(obj[k])
+                except Exception:
+                    pass
+        # sometimes points are nested under "stats"
+        stats = obj.get("stats") or {}
+        for k in ("pts_ppr", "pts_half_ppr", "pts_std", "fantasy_points", "fp"):
+            if k in stats and stats[k] is not None:
+                try:
+                    return float(stats[k])
+                except Exception:
+                    pass
+        # compute from raw stats using your league’s scoring
+        return _score_from_stats(stats, scoring_settings)
+
+    rows = []
+
+    for wk in weeks:
+        url = f"https://api.sleeper.app/v1/projections/nfl/{season}/{wk}?season_type=regular"
+        try:
+            r = requests.get(url, timeout=timeout)
+            if r.status_code != 200:
+                print(f"[proj] WARN {r.status_code} on {url}")
+                time.sleep(sleep_sec)
+                continue
+            data = r.json()
+        except Exception as e:
+            print(f"[proj] ERROR fetching {url}: {e}")
+            time.sleep(sleep_sec)
+            continue
+
+        # Normalize to iterable of (player_id, object)
+        iterable = []
+        if isinstance(data, list):
+            # list of projection objects
+            for obj in data:
+                if not isinstance(obj, dict):
+                    continue
+                pid = obj.get("player_id") or obj.get("id")
+                if not pid:
+                    # sometimes the key is only in nested structure; ignore if absent
+                    continue
+                iterable.append((str(pid), obj))
+        elif isinstance(data, dict):
+            # dict keyed by player_id
+            for k, v in data.items():
+                if not isinstance(v, dict):
+                    # values might be primitives if API changes; skip
+                    continue
+                pid = v.get("player_id") or v.get("id") or k
+                iterable.append((str(pid), v))
+        else:
+            print(f"[proj] WARN unexpected payload type: {type(data)}")
+            time.sleep(sleep_sec)
+            continue
+
+        # Collect rows
+        for pid, obj in iterable:
+            pts = extract_points(obj)
+            rows.append({"player_id": str(pid), "week": int(wk), "proj_pts": float(pts)})
+
+        time.sleep(sleep_sec)
+
+    if not rows:
+        return pd.DataFrame(columns=["player_id", "proj_total"])
+
+    df = pd.DataFrame(rows)
+    agg = df.groupby("player_id", as_index=False)["proj_pts"].sum().rename(columns={"proj_pts": "proj_total"})
+    return agg
+
+def default_scoring_settings():
+    """
+    Sensible PPR defaults. Override automatically if the league endpoint
+    returns scoring_settings.
+    """
+    return {
+        # offense
+        "pass_yd": 0.04,     # 1 pt / 25 pass yds
+        "pass_td": 4.0,
+        "pass_int": -2.0,
+        "rush_yd": 0.10,     # 1 pt / 10 rush yds
+        "rush_td": 6.0,
+        "rec_yd": 0.10,      # 1 pt / 10 rec yds
+        "rec_td": 6.0,
+        "rec": 1.0,          # PPR
+        "fumble": -2.0,
+        # (you can expand with K/DEF if you later score those here)
+    }
+
+def get_league_scoring(league_id: str):
+    try:
+        r = requests.get(f"{BASE}/league/{league_id}", timeout=10)
+        r.raise_for_status()
+        data = r.json() or {}
+        ss = data.get("scoring_settings") or {}
+        # Sleeper returns numbers keyed by stat names; keep as-is.
+        return ss
+    except Exception:
+        return {}
 
 def main():
     ap = argparse.ArgumentParser(description="Build projections & rankings from your Sleeper league history.")
@@ -291,6 +442,16 @@ def main():
         help="Exponent to penalize mean by availability (1.0 default; higher = stronger penalty).")
     ap.add_argument("--strict-backups-cutoff", type=int, default=None,
         help="If set, drop QBs with pos_rank > cutoff unless depth_chart_order==1 (e.g., 20).")
+    ap.add_argument("--use-sleeper-proj", action="store_true",
+                    help="Blend in Sleeper weekly projections for the given season.")
+    ap.add_argument("--proj-season", type=int, default=None,
+                    help="Season year for Sleeper projections (e.g., 2025). If omitted, will try to infer from league.")
+    ap.add_argument("--proj-weeks", type=str, default="1-14",
+                    help="Weeks to pull from Sleeper projections (e.g., '1-14' or '1,2,3,4').")
+    ap.add_argument("--proj-weight", type=float, default=0.6,
+                    help="Blend weight alpha (0..1). 0=ignore Sleeper projections; 1=use only Sleeper projections.")
+    ap.add_argument("--proj-timeout", type=float, default=7.0,
+                    help="HTTP timeout per projections call.")
     args = ap.parse_args()
 
     rng = np.random.default_rng(args.seed)
@@ -449,10 +610,59 @@ def main():
         proj.to_csv(args.out, index=False)
         sys.exit(0)
 
-    # >>> Call the simulator as you already do (unchanged) <<<
-    sim = season_sim(proj, weeks=args.weeks, sims=args.sims, rng=rng)
-
+    # --- (A) Pull Sleeper projections and normalize --------------------------------
+    if args.use_sleeper_proj:
+        scoring_settings = get_league_scoring(args.league_id)
+        if not scoring_settings:
+            scoring_settings = default_scoring_settings()
+        print("[proj] using scoring settings (PPR={}): {} keys"
+            .format(scoring_settings.get("rec", 0), len(scoring_settings)))
         
+        week_list = _parse_week_spec(args.proj_weeks)  # already in your file
+        print(f"[proj] Fetching Sleeper projections: season={args.proj_season}, "
+            f"weeks={week_list}, alpha={args.proj_weight}")
+        df_proj = fetch_sleeper_projections(
+            season=int(args.proj_season),
+            weeks=week_list,
+            scoring_settings=scoring_settings,   # the dict you already use for _score_from_stats
+        )
+
+        # --- (B) Ensure baseline empirical columns exist ---------------------------
+        # If earlier steps produced no history for some players/positions, backfill.
+        for col, default in (("season_mean", 0.0), ("season_std", 0.0), ("games_recent", 0)):
+            if col not in proj.columns:
+                proj[col] = default
+
+        # Keep ids as strings for a clean merge
+        proj["player_id"] = proj["player_id"].astype(str)
+        if not df_proj.empty:
+            df_proj["player_id"] = df_proj["player_id"].astype(str)
+
+        # --- (C) Merge and blend ---------------------------------------------------
+        proj = proj.merge(df_proj, on="player_id", how="left")  # adds 'proj_total' (season total pts)
+
+        alpha = float(args.proj_weight)
+
+        emp_mu = pd.to_numeric(proj["season_mean"], errors="coerce").fillna(0.0)
+        emp_sd = pd.to_numeric(proj.get("season_std"), errors="coerce").fillna(0.0)
+        model_mu = pd.to_numeric(proj.get("proj_total"), errors="coerce").fillna(0.0)
+
+        # Only blend where a model value exists; otherwise keep empirical
+        has_model = model_mu > 0
+        blended_mu = emp_mu.copy()
+        blended_mu[has_model] = (1.0 - alpha) * emp_mu[has_model] + alpha * model_mu[has_model]
+
+        # Mildly shrink variance where we have model help (no model SD available)
+        blended_sd = emp_sd.copy()
+        blended_sd[has_model] = emp_sd[has_model] * (1.0 - 0.4 * alpha)
+
+        proj["season_mean"] = blended_mu
+        proj["season_std"]  = blended_sd
+
+        # Optional debug to confirm the merge/blend did something
+        print(f"[proj] merged Sleeper projections for {int(has_model.sum())} players "
+            f"(total rows={len(proj)})")
+
     # 7) Season simulation
     sim = season_sim(proj, weeks=args.weeks, sims=args.sims, rng=rng)
 
